@@ -11,7 +11,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "d
 var PORT = 8080;
 var app = (0, _express["default"])();
 var corsOptions = {
-  origin: ["http://localhost:3000"],
+  origin: ["http://localhost:3000", "https://wondrous-semifreddo-7da894.netlify.app/"],
   methods: ["GET", "POST"],
   credentials: true
 };
