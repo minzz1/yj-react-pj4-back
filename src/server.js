@@ -2,6 +2,7 @@ import "dotenv/config";
 import "./db.js";
 import express from "express";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 import rentalRouter from "./routers/rentalRouter.js";
 import cors from "cors";
 import foodsRouter from "./routers/foodsRouter.js";
@@ -16,6 +17,8 @@ const corsOptions = {
   credentials: true,
 };
 
+//미들웨어 부분
+app.use(cookieParser());
 app.use(cors(corsOptions));
 app.use(morgan("dev"));
 app.use(express.json());
