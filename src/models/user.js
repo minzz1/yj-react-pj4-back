@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   email: String,
   address: String,
   createdAt: Date,
+  avatarUrl: String,
 });
 
 //데이터베이스에 'password'를 저장하기 전에

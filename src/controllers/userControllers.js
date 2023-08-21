@@ -71,8 +71,128 @@ export const getLoginSuccess = async (req, res) => {
     const data = jwt.verify(token, process.env.ACCESS_SECRET);
     const userData = await User.findOne({ _id: data.id });
 
-    res.status(200).json({ ok: "true", email: userData.email, name: userData.username });
+    res.status(200).json({
+      ok: "true",
+      email: userData.email,
+      name: userData.username,
+      avatar: userData.avatarUrl,
+    });
+  } catch (error) {
+    res.status(400).json({ ok: "false" });
+    console.log(error);
+  }
+};
+
+//로그아웃
+export const logout = async (req, res) => {
+  try {
+    res.cookie("accessToken", "", {
+      secure: true,
+      httpOnly: false,
+      sameSite: "None",
+    });
+    res.status(200).json({ ok: "true", message: "로그아웃 성공" });
   } catch (error) {
     console.log(error);
+  }
+};
+
+//카카오 로그인
+export const kakaoLogin = async (req, res) => {
+  try {
+    // 카카오 2단계 토큰 얻기
+    const KAKAO_BASE_PATH = "https://kauth.kakao.com/oauth/token";
+    const config = {
+      grant_type: "authorization_code",
+      client_id: process.env.KAKAO_CLIENT_ID,
+      redirect_uri: process.env.KAKAO_REDIRECT_URL,
+      code: req.body.code,
+    };
+    const params = new URLSearchParams(config).toString();
+    const finalUrl = `${KAKAO_BASE_PATH}?${params}`;
+
+    const data = await fetch(finalUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
+    const tokenRequest = await data.json();
+    console.log(tokenRequest.access_token);
+
+    // 카카오 3단계 ....
+    if ("access_token" in tokenRequest) {
+      const { access_token } = tokenRequest;
+      const userRequest = await fetch("https://kapi.kakao.com/v2/user/me", {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Bearer ${access_token}`,
+        },
+      });
+      const userData = await userRequest.json();
+      // console.log(userData);
+
+      // 로그인 로직
+      const {
+        kakao_account: {
+          profile: { nickname, thumbnail_image_url },
+          email,
+        },
+      } = userData;
+
+      const existingUser = await User.findOne({ email });
+
+      if (existingUser) {
+        // 로그인
+        try {
+          const accessToken = jwt.sign(
+            {
+              id: existingUser._id,
+            },
+            process.env.ACCESS_SECRET
+          );
+          res.cookie("accessToken", accessToken, {
+            secure: true,
+            httpOnly: false,
+            sameSite: "None",
+          });
+          res.status(200).json({ ok: "true" });
+        } catch (error) {
+          console.log(error);
+          res.status(500).json({ ok: "false" });
+        }
+      } else {
+        // 회원가입
+        const user = await User.create({
+          name: nickname,
+          username: nickname,
+          email: email,
+          avatarUrl: thumbnail_image_url,
+          createdAt: Date.now(),
+        });
+
+        //회원가입 후 로그인
+        try {
+          const accessToken = jwt.sign(
+            {
+              id: user._id,
+            },
+            process.env.ACCESS_SECRET
+          );
+          res.cookie("accessToken", accessToken, {
+            secure: true,
+            httpOnly: false,
+            sameSite: "None",
+          });
+          res.status(200).json({ ok: "true" });
+        } catch (error) {
+          console.log(error);
+          res.status(500).json({ ok: "false" });
+        }
+      }
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ ok: "false" });
   }
 };
